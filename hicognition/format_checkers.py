@@ -1,8 +1,18 @@
 """Collection of format checkers for biological data formats. """
+import os
 import re
 import cooler
 import logging
 
+import io_helpers
+
+def is_bedpe_file_correctly_formatted(file_path, chromosome_names, _):
+    try:
+        io_helpers.clean_bedpe(file_path, os.devnull, chromosome_names)
+    except (ValueError, KeyError) as err:
+        logging.warn(f'bedpe file was not valid: {err}')
+        return False
+    return True
 
 def is_bed_file_correctly_formatted(file_path, chromosome_names, needed_resolutions):
     """Takes bed-file and checks whether it is correctly formated"""
@@ -68,6 +78,7 @@ def is_mcooler(file_path, chromosome_names, needed_resolutions):
 
 FORMAT_CHECKERS = {
     "bedfile": is_bed_file_correctly_formatted,
+    "bedpe_file": is_bedpe_file_correctly_formatted,
     "cooler": is_mcooler,
     "bigwig": lambda x, y, z: True,
     "chromsizes": lambda x: True,

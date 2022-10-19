@@ -7,6 +7,38 @@ import logging
 from functools import partial
 from .format_checkers import _is_bed_row
 
+def clean_bedpe(input_file, output_file, chromosome_names=[]):
+    """Takes bedpe-file and checks whether it is correctly formated
+    expected:
+    # comments
+    track header
+    browser also a header
+    chrA   start1   end1   chrB   start2   end2   [...]
+    chrA   start1   end1   chrB   start2   end2   [...]
+    ...
+    """
+    headers = ('#', 'track', 'browser')
+    with open(input_file, 'r') as f:
+        bedpe_file = [line.strip().split('\t') for line in f.readlines() if not line.lower().startswith(headers) and line.strip() != '']
+    bedpe_df = pd.DataFrame(bedpe_file, columns=None)
+    
+    # check for validity, first time may go wrong as header may be in df
+    try:
+        [bedpe_df.T.iloc[col].astype('str', errors='raise') for col in [0,3]]
+        [bedpe_df.T.iloc[col].astype('int', errors='raise') for col in [1,2,4,5]]
+    except ValueError:
+        bedpe_df.columns = bedpe_df.iloc[0]
+        bedpe_df = bedpe_df[1:]
+        
+    [bedpe_df.T.iloc[col].astype('str') for col in [0,3]]
+    [bedpe_df.T.iloc[col].astype('int') for col in [1,2,4,5]]
+
+    chromosomes = set([*bedpe_df.T.iloc[0].unique(), *bedpe_df.T.iloc[3].unique()])
+    missing_chromosomes = [chr for chr in chromosomes if chr not in chromosome_names]
+    for chr in missing_chromosomes:
+        logging.warn(f"Chromosome {chr} does not exist in chromosome names!")
+    
+    bedpe_df.to_csv(output_file, sep="\t", index=False, header=None)
 
 def convert_bed_to_bedpe(input_file, target_file, halfwindowsize, chromsize_path):
     """Converts bedfile at inputFile to a bedpefile,
