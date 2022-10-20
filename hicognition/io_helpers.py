@@ -5,7 +5,6 @@ import numpy as np
 import os
 import logging
 from functools import partial
-from .format_checkers import _is_bed_row
 
 def clean_bedpe(input_file, output_file, chromosome_names=[]):
     """Takes bedpe-file and checks whether it is correctly formated
@@ -29,14 +28,15 @@ def clean_bedpe(input_file, output_file, chromosome_names=[]):
     except ValueError:
         bedpe_df.columns = bedpe_df.iloc[0]
         bedpe_df = bedpe_df[1:]
-        
+    
+    # repeat again with first line as header
     [bedpe_df.T.iloc[col].astype('str') for col in [0,3]]
     [bedpe_df.T.iloc[col].astype('int') for col in [1,2,4,5]]
 
     chromosomes = set([*bedpe_df.T.iloc[0].unique(), *bedpe_df.T.iloc[3].unique()])
     missing_chromosomes = [chr for chr in chromosomes if chr not in chromosome_names]
     for chr in missing_chromosomes:
-        logging.warn(f"Chromosome {chr} does not exist in chromosome names!")
+        logging.warning(f"Chromosome {chr} does not exist in chromosome names!")
     
     bedpe_df.to_csv(output_file, sep="\t", index=False, header=None)
 
@@ -85,37 +85,61 @@ def convert_bed_to_bedpe(input_file, target_file, halfwindowsize, chromsize_path
     final.to_csv(target_file, sep="\t", header=None, index=False)
 
 
-def clean_bed(input_file, output_file):
+def clean_bed(input_file, output_file, chromosome_names=[]):
     """
-    Loads in bedfile and removes headers.
+    Loads in bedfile and removes headers, also checks for validity
     """
-    # first, read in the file
-    with open(input_file, "r") as f:
-        content = f.read()
-        lines = content.split("\n")
-    # strip comment heade
-    skipped_rows = 0
-    for line in lines:
-        if (line[0] == "#") or (line[:5] == "track") or (line[:7] == "browser"):
-            skipped_rows += 1
-            continue
-        break
-    file_accumulator = []
-    # check whether next line contains column names -> first three columns will contain chrSomething number number
-    potential_header_line = lines[skipped_rows]
-    split_header = potential_header_line.split("\t")
-    if not _is_bed_row(split_header):
-        # header present
-        skipped_rows += 1
-    stripped_lines = lines[skipped_rows:]
-    for line in stripped_lines:
-        if line == "":
-            # Skip empty last line
-            continue
-        file_accumulator.append(line.split("\t"))
-    # construct dataframe and save
-    data = pd.DataFrame(file_accumulator)
-    data.to_csv(output_file, sep="\t", index=False, header=None)
+    headers = ('#', 'track', 'browser')
+    with open(input_file, 'r') as f:
+        bedpe_file = [line.strip().split('\t') for line in f.readlines() if not line.lower().startswith(headers) and line.strip() != '']
+    bed_df = pd.DataFrame(bedpe_file, columns=None)
+    
+    # check for validity, first time may go wrong as header may be in df
+    try:
+        [bed_df.T.iloc[col].astype('str', errors='raise') for col in [0]]
+        [bed_df.T.iloc[col].astype('int', errors='raise') for col in [1,2]]
+    except ValueError:
+        bed_df.columns = bed_df.iloc[0]
+        bed_df = bed_df[1:]
+    
+    # repeat again with first line as header
+    [bed_df.T.iloc[col].astype('str') for col in [0]]
+    [bed_df.T.iloc[col].astype('int') for col in [1,2]]
+
+    chromosomes = bed_df.T.iloc[0].unique()
+    missing_chromosomes = [chr for chr in chromosomes if chr not in chromosome_names]
+    for chr in missing_chromosomes:
+        logging.warning(f"Chromosome {chr} does not exist in chromosome names!")
+    
+    bed_df.to_csv(output_file, sep="\t", index=False, header=None)
+    
+    # # first, read in the file
+    # with open(input_file, "r") as f:
+    #     content = f.read()
+    #     lines = content.split("\n")
+    # # strip comment heade
+    # skipped_rows = 0
+    # for line in lines:
+    #     if (line[0] == "#") or (line[:5] == "track") or (line[:7] == "browser"):
+    #         skipped_rows += 1
+    #         continue
+    #     break
+    # file_accumulator = []
+    # # check whether next line contains column names -> first three columns will contain chrSomething number number
+    # potential_header_line = lines[skipped_rows]
+    # split_header = potential_header_line.split("\t")
+    # if not _is_bed_row(split_header):
+    #     # header present
+    #     skipped_rows += 1
+    # stripped_lines = lines[skipped_rows:]
+    # for line in stripped_lines:
+    #     if line == "":
+    #         # Skip empty last line
+    #         continue
+    #     file_accumulator.append(line.split("\t"))
+    # # construct dataframe and save
+    # data = pd.DataFrame(file_accumulator)
+    # data.to_csv(output_file, sep="\t", index=False, header=None)
 
 
 def sort_bed(input_file, output_file, chromsizes):

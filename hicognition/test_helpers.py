@@ -1,4 +1,5 @@
 """Helper functions and classes for unittesting"""
+import logging
 import unittest
 import os
 import shutil
@@ -9,8 +10,7 @@ import sys
 
 sys.path.append("./")
 from app import create_app, db
-from app.models import User, Organism
-
+from app.models import User, Organism, Dataset, Assembly
 
 class TempDirTestCase(unittest.TestCase):
     """Will create a temporary directory in the current working
@@ -23,6 +23,9 @@ class TempDirTestCase(unittest.TestCase):
     @classmethod
     def setUpClass(cls):
         """make test directory."""
+        if os.path.exists(cls.TEMP_PATH):
+            logging.warning("Had to remove temp directory")
+            shutil.rmtree(cls.TEMP_PATH)
         os.mkdir(cls.TEMP_PATH)
 
     @classmethod
@@ -36,6 +39,7 @@ class LoginTestCase(unittest.TestCase):
     for HTTPBasicAuth and creating a flask app."""
 
     def setUp(self):
+        self.dataset_id_index = 1
         self.app = create_app("testing")
         self.app_context = self.app.app_context()
         self.app_context.push()
@@ -46,6 +50,44 @@ class LoginTestCase(unittest.TestCase):
         db.session.remove()
         db.drop_all()
         self.app_context.pop()
+
+    def create_dataset(self, add_and_commit: bool = False, user_id: int=None, assembly: int = None, id: int = None,  **key_value_pairs: dict) -> Dataset:
+        dataset = self.create_default_dataset(user_id, assembly, id=id)
+        # fill with data
+        [dataset.__setattr__(key, value) for key, value in key_value_pairs.items()]
+        
+        if add_and_commit:
+            db.session.add(dataset)
+            db.session.commit()
+        
+        return dataset
+
+    def create_default_dataset(self, user_id: int=None, assembly: int=None, id: int = None) -> Dataset:
+        if id is None:
+            id = self.dataset_id_index
+            self.dataset_id_index += 1
+            
+        return Dataset(
+            id = id,
+            user_id = user_id,
+            assembly = assembly,
+            dataset_name = 'test',
+            filetype = 'bedfile',
+            public = False,
+            upload_state = 'new',
+            processing_state = 'new'
+        )
+        
+    def add_default_assembly(self, add_and_commit: bool=False):
+        self.hg19 = Assembly(
+            id=1,
+            name="hg19",
+            chrom_sizes=self.app.config["CHROM_SIZES"],
+            chrom_arms=self.app.config["CHROM_ARMS"],
+        )
+        if add_and_commit:
+            db.session.add(self.hg19)
+            db.session.commit()
 
     def get_api_headers(self, username, password):
         return {
