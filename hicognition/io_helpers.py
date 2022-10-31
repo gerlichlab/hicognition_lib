@@ -40,6 +40,7 @@ def clean_bedpe(input_file, output_file, chromosome_names=[]):
     
     bedpe_df.to_csv(output_file, sep="\t", index=False, header=None)
 
+# obsolute, not used, ambiguous naming, would expect to convert bed to bedpe, but apply window around points
 def convert_bed_to_bedpe(input_file, target_file, halfwindowsize, chromsize_path):
     """Converts bedfile at inputFile to a bedpefile,
     expanding the point of interest up- and downstream
@@ -112,34 +113,6 @@ def clean_bed(input_file, output_file, chromosome_names=[]):
         logging.warning(f"Chromosome {chr} does not exist in chromosome names!")
     
     bed_df.to_csv(output_file, sep="\t", index=False, header=None)
-    
-    # # first, read in the file
-    # with open(input_file, "r") as f:
-    #     content = f.read()
-    #     lines = content.split("\n")
-    # # strip comment heade
-    # skipped_rows = 0
-    # for line in lines:
-    #     if (line[0] == "#") or (line[:5] == "track") or (line[:7] == "browser"):
-    #         skipped_rows += 1
-    #         continue
-    #     break
-    # file_accumulator = []
-    # # check whether next line contains column names -> first three columns will contain chrSomething number number
-    # potential_header_line = lines[skipped_rows]
-    # split_header = potential_header_line.split("\t")
-    # if not _is_bed_row(split_header):
-    #     # header present
-    #     skipped_rows += 1
-    # stripped_lines = lines[skipped_rows:]
-    # for line in stripped_lines:
-    #     if line == "":
-    #         # Skip empty last line
-    #         continue
-    #     file_accumulator.append(line.split("\t"))
-    # # construct dataframe and save
-    # data = pd.DataFrame(file_accumulator)
-    # data.to_csv(output_file, sep="\t", index=False, header=None)
 
 
 def sort_bed(input_file, output_file, chromsizes):
@@ -203,6 +176,7 @@ def load_chromsizes(path):
     return chromsize_series
 
 
+# TODO handle exceptions better -> e.g. permission problems
 def remove_safely(file_path, logger):
     """Tries to remove a file and logs warning with app logger if this does not work."""
     try:

@@ -20,7 +20,7 @@ def get_all_interval_ids(region_datasets):
     """Returns ids of all intervals associated with list or region datasets."""
     interval_ids = []
     for region_dataset in region_datasets:
-        interval_ids.extend([entry.id for entry in region_dataset.intervals.all()])
+        interval_ids.extend([entry.id for entry in region_dataset.intervals]) # .all()])
     return interval_ids
 
 
