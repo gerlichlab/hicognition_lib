@@ -92,8 +92,8 @@ def clean_bed(input_file, output_file, chromosome_names=[]):
     """
     headers = ('#', 'track', 'browser')
     with open(input_file, 'r') as f:
-        bedpe_file = [line.strip().split('\t') for line in f.readlines() if not line.lower().startswith(headers) and line.strip() != '']
-    bed_df = pd.DataFrame(bedpe_file, columns=None)
+        bed_file = [line.strip().split('\t') for line in f.readlines() if not line.lower().startswith(headers) and line.strip() != '']
+    bed_df = pd.DataFrame(bed_file, columns=None)
     
     # check for validity, first time may go wrong as header may be in df
     try:
